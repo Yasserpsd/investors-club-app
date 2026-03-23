@@ -27,8 +27,7 @@ class OfferDetailScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.error_outline,
-                      size: 50,
-                      color: Colors.white.withOpacity(0.3)),
+                      size: 50, color: Colors.white.withOpacity(0.3)),
                   const SizedBox(height: 16),
                   Text(
                     langCode == 'ar'
@@ -46,10 +45,8 @@ class OfferDetailScreen extends ConsumerWidget {
 
           return CustomScrollView(
             slivers: [
-              // ── App Bar with Image ──
               SliverAppBar(
-                expandedHeight:
-                    offer.images.isNotEmpty ? 250 : 120,
+                expandedHeight: offer.images.isNotEmpty ? 250 : 120,
                 pinned: true,
                 backgroundColor: AppColors.primaryDark,
                 leading: IconButton(
@@ -72,15 +69,13 @@ class OfferDetailScreen extends ConsumerWidget {
                             Image.network(
                               offer.images.first,
                               fit: BoxFit.cover,
-                              errorBuilder:
-                                  (context, error, stackTrace) {
+                              errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: AppColors.primaryDark,
                                   child: Icon(
                                     Icons.image_outlined,
                                     size: 50,
-                                    color: Colors.white
-                                        .withOpacity(0.15),
+                                    color: Colors.white.withOpacity(0.15),
                                   ),
                                 );
                               },
@@ -92,8 +87,7 @@ class OfferDetailScreen extends ConsumerWidget {
                                   end: Alignment.bottomCenter,
                                   colors: [
                                     Colors.transparent,
-                                    AppColors.primaryDark
-                                        .withOpacity(0.8),
+                                    AppColors.primaryDark.withOpacity(0.8),
                                   ],
                                 ),
                               ),
@@ -112,23 +106,20 @@ class OfferDetailScreen extends ConsumerWidget {
                         ),
                 ),
               ),
-
-              // ── Content ──
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Tags row
                       Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryGold
-                                  .withOpacity(0.15),
+                              color:
+                                  AppColors.primaryGold.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -147,23 +138,19 @@ class OfferDetailScreen extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: Colors.amber
-                                    .withOpacity(0.15),
-                                borderRadius:
-                                    BorderRadius.circular(8),
+                                color: Colors.amber.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.star,
-                                      size: 12,
-                                      color: Colors.amber),
+                                      size: 12, color: Colors.amber),
                                   SizedBox(width: 4),
                                   Text(
                                     'VIP',
                                     style: TextStyle(
-                                      fontFamily:
-                                          'IBMPlexSansArabic',
+                                      fontFamily: 'IBMPlexSansArabic',
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.amber,
@@ -176,8 +163,7 @@ class OfferDetailScreen extends ConsumerWidget {
                           const Spacer(),
                           Icon(Icons.calendar_today,
                               size: 14,
-                              color:
-                                  Colors.white.withOpacity(0.4)),
+                              color: Colors.white.withOpacity(0.4)),
                           const SizedBox(width: 6),
                           Text(
                             offer.publishDate
@@ -186,16 +172,12 @@ class OfferDetailScreen extends ConsumerWidget {
                             style: TextStyle(
                               fontFamily: 'IBMPlexSansArabic',
                               fontSize: 12,
-                              color:
-                                  Colors.white.withOpacity(0.4),
+                              color: Colors.white.withOpacity(0.4),
                             ),
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 20),
-
-                      // Title
                       Text(
                         offer.title(langCode),
                         style: const TextStyle(
@@ -206,10 +188,7 @@ class OfferDetailScreen extends ConsumerWidget {
                           height: 1.4,
                         ),
                       ),
-
                       const SizedBox(height: 16),
-
-                      // Body
                       Text(
                         offer.body(langCode),
                         style: TextStyle(
@@ -219,8 +198,6 @@ class OfferDetailScreen extends ConsumerWidget {
                           height: 1.8,
                         ),
                       ),
-
-                      // Links section
                       if (offer.links.isNotEmpty) ...[
                         const SizedBox(height: 30),
                         Row(
@@ -230,8 +207,7 @@ class OfferDetailScreen extends ConsumerWidget {
                               height: 18,
                               decoration: BoxDecoration(
                                 color: AppColors.primaryGold,
-                                borderRadius:
-                                    BorderRadius.circular(2),
+                                borderRadius: BorderRadius.circular(2),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -251,23 +227,20 @@ class OfferDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         ...offer.links.map((link) {
                           return Container(
-                            margin:
-                                const EdgeInsets.only(bottom: 8),
+                            margin: const EdgeInsets.only(bottom: 8),
                             child: InkWell(
                               onTap: () async {
                                 final uri = Uri.parse(link);
                                 if (await canLaunchUrl(uri)) {
                                   await launchUrl(uri,
-                                      mode: LaunchMode
-                                          .externalApplication);
+                                      mode:
+                                          LaunchMode.externalApplication);
                                 }
                               },
                               child: Container(
-                                padding:
-                                    const EdgeInsets.all(12),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white
-                                      .withOpacity(0.05),
+                                  color: Colors.white.withOpacity(0.05),
                                   borderRadius:
                                       BorderRadius.circular(10),
                                   border: Border.all(
@@ -277,12 +250,10 @@ class OfferDetailScreen extends ConsumerWidget {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(
-                                        Icons
-                                            .open_in_new_outlined,
+                                    const Icon(
+                                        Icons.open_in_new_outlined,
                                         size: 16,
-                                        color: AppColors
-                                            .primaryGold),
+                                        color: AppColors.primaryGold),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
@@ -291,14 +262,11 @@ class OfferDetailScreen extends ConsumerWidget {
                                           fontFamily:
                                               'IBMPlexSansArabic',
                                           fontSize: 13,
-                                          color: AppColors
-                                              .primaryGold,
+                                          color: AppColors.primaryGold,
                                           decoration:
-                                              TextDecoration
-                                                  .underline,
+                                              TextDecoration.underline,
                                         ),
-                                        overflow:
-                                            TextOverflow.ellipsis,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -308,7 +276,6 @@ class OfferDetailScreen extends ConsumerWidget {
                           );
                         }),
                       ],
-
                       const SizedBox(height: 100),
                     ],
                   ),
@@ -318,27 +285,22 @@ class OfferDetailScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(
-          child: LoadingWidget(message: 'جاري تحميل العرض...'),
-        ),
+            child: LoadingWidget(message: 'جاري تحميل العرض...')),
         error: (error, _) => Center(
           child: Text(
             'حدث خطأ: $error',
             style: const TextStyle(
-              fontFamily: 'IBMPlexSansArabic',
-              color: Colors.white54,
-            ),
+                fontFamily: 'IBMPlexSansArabic', color: Colors.white54),
           ),
         ),
       ),
-      // Bottom action bar
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
         decoration: BoxDecoration(
           color: AppColors.primaryDark,
           border: Border(
             top: BorderSide(
-              color: AppColors.primaryGold.withOpacity(0.1),
-            ),
+                color: AppColors.primaryGold.withOpacity(0.1)),
           ),
         ),
         child: Row(
@@ -347,10 +309,13 @@ class OfferDetailScreen extends ConsumerWidget {
               child: ElevatedButton.icon(
                 onPressed: () {
                   final offer =
-                      ref.read(offerByIdProvider(offerId)).valueOrNull;
+                      ref.read(offerByIdProvider(offerId)).value;
                   if (offer != null) {
-                    Share.share(
-                      '${offer.title('ar')}\n\nhttps://vcmem.com/update/',
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text:
+                            '${offer.title('ar')}\n\nhttps://vcmem.com/update/',
+                      ),
                     );
                   }
                 },
@@ -367,11 +332,9 @@ class OfferDetailScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGold,
                   foregroundColor: AppColors.primaryDark,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
@@ -391,13 +354,10 @@ class OfferDetailScreen extends ConsumerWidget {
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.primaryGold,
-                  side: const BorderSide(
-                      color: AppColors.primaryGold),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: AppColors.primaryGold),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
