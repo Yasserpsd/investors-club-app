@@ -39,14 +39,18 @@ service cloud.firestore {
       allow read: if isOwner(memberId) || isAdmin();
 
       // New member can create their own doc on sign-up
+      // فرض أن role = member و status = active عند الإنشاء
       allow create: if isOwner(memberId)
         && request.resource.data.role == 'member'
+        && request.resource.data.status == 'active'
         && request.resource.data.nationalId is string
-        && request.resource.data.nationalId.size() == 10;
+        && request.resource.data.nationalId.size() == 10
+        && request.resource.data.agreedToTerms == true;
 
-      // Member can update own doc EXCEPT nationalId and role
+      // Member can update own doc EXCEPT nationalId, role, and status
+      // Admin can update anything except nationalId
       allow update: if (isOwner(memberId) && nationalIdUnchanged()
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status']))
         || (isAdmin() && nationalIdUnchanged());
 
       // Only admin can delete
@@ -69,20 +73,26 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════
     // Support Chats
     // ═══════════════════════════════════════════════
-    match /supportChats/{memberId}/messages/{messageId} {
-      // Member can read/write their own chat
-      // Admin can read/write all chats
+    match /supportChats/{memberId} {
+      // Allow read/write on the parent doc for metadata
       allow read: if isOwner(memberId) || isAdmin();
+      allow write: if isOwner(memberId) || isAdmin();
 
-      allow create: if (isOwner(memberId) &&
-        request.resource.data.senderRole == 'member' &&
-        request.resource.data.senderId == request.auth.uid)
-        || (isAdmin() &&
-        request.resource.data.senderRole == 'admin');
+      match /messages/{messageId} {
+        // Member can read/write their own chat
+        // Admin can read/write all chats
+        allow read: if isOwner(memberId) || isAdmin();
 
-      // Allow marking messages as read
-      allow update: if (isOwner(memberId) || isAdmin())
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        allow create: if (isOwner(memberId) &&
+          request.resource.data.senderRole == 'member' &&
+          request.resource.data.senderId == request.auth.uid)
+          || (isAdmin() &&
+          request.resource.data.senderRole == 'admin');
+
+        // Allow marking messages as read
+        allow update: if (isOwner(memberId) || isAdmin())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      }
     }
   }
 }
