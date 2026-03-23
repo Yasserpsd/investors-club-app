@@ -119,7 +119,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           errorMessage = 'محاولات كثيرة. حاول بعد قليل';
         }
 
-        // طباعة الخطأ الحقيقي في الـ console
         debugPrint('🔴 SIGNUP SCREEN ERROR: $e');
 
         ScaffoldMessenger.of(context).showSnackBar(
