@@ -5,13 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../shared/models/member_model.dart';
 import '../features/auth/services/auth_service.dart';
 
-// ── Language Provider ───────────────────────────────────
-final languageProvider = StateNotifierProvider<LanguageNotifier, Locale>((ref) {
-  return LanguageNotifier();
-});
+// ── Language Provider ───────────────────────────────
+final languageProvider =
+    NotifierProvider<LanguageNotifier, Locale>(LanguageNotifier.new);
 
-class LanguageNotifier extends StateNotifier<Locale> {
-  LanguageNotifier() : super(const Locale('ar'));
+class LanguageNotifier extends Notifier<Locale> {
+  @override
+  Locale build() => const Locale('ar');
 
   void setLanguage(String languageCode) {
     state = Locale(languageCode);
@@ -32,12 +32,12 @@ class LanguageNotifier extends StateNotifier<Locale> {
   }
 }
 
-// ── Auth State Provider ─────────────────────────────────
+// ── Auth State Provider ─────────────────────────────
 final authStateProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.authStateChanges();
 });
 
-// ── Current Member Provider ─────────────────────────────
+// ── Current Member Provider ─────────────────────────
 final currentMemberProvider = StreamProvider<MemberModel?>((ref) {
   final authState = ref.watch(authStateProvider);
   return authState.when(
