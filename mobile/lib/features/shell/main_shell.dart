@@ -8,7 +8,6 @@ import '../../features/chat/services/chat_service.dart';
 
 class MainShell extends ConsumerWidget {
   final Widget child;
-
   const MainShell({super.key, required this.child});
 
   int _currentIndex(BuildContext context) {
@@ -43,7 +42,7 @@ class MainShell extends ConsumerWidget {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -85,8 +84,7 @@ class MainShell extends ConsumerWidget {
       data: (count) {
         if (count == 0) {
           return Icon(
-            isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
-          );
+              isActive ? Icons.chat_bubble : Icons.chat_bubble_outline);
         }
         return Badge(
           label: Text(
@@ -94,16 +92,13 @@ class MainShell extends ConsumerWidget {
             style: const TextStyle(fontSize: 10, color: Colors.white),
           ),
           child: Icon(
-            isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
-          ),
+              isActive ? Icons.chat_bubble : Icons.chat_bubble_outline),
         );
       },
-      loading: () => Icon(
-        isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
-      ),
-      error: (_, __) => Icon(
-        isActive ? Icons.chat_bubble : Icons.chat_bubble_outline,
-      ),
+      loading: () =>
+          Icon(isActive ? Icons.chat_bubble : Icons.chat_bubble_outline),
+      error: (_, __) =>
+          Icon(isActive ? Icons.chat_bubble : Icons.chat_bubble_outline),
     );
   }
 }
