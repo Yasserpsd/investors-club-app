@@ -103,15 +103,25 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       if (mounted) {
         String errorMessage = 'خطأ في إنشاء الحساب';
         final errorStr = e.toString();
+
         if (errorStr.contains('email-already-in-use')) {
           errorMessage = 'البريد الإلكتروني مسجل مسبقاً';
         } else if (errorStr.contains('weak-password')) {
-          errorMessage = 'كلمة المرور ضعيفة';
+          errorMessage = 'كلمة المرور ضعيفة - 6 أحرف على الأقل';
         } else if (errorStr.contains('invalid-email')) {
           errorMessage = 'البريد الإلكتروني غير صحيح';
         } else if (errorStr.contains('network-request-failed')) {
           errorMessage = 'تحقق من اتصالك بالإنترنت';
+        } else if (errorStr.contains('PERMISSION_DENIED') ||
+                   errorStr.contains('permission-denied')) {
+          errorMessage = 'خطأ في الصلاحيات - تواصل مع الدعم';
+        } else if (errorStr.contains('too-many-requests')) {
+          errorMessage = 'محاولات كثيرة. حاول بعد قليل';
         }
+
+        // طباعة الخطأ الحقيقي في الـ console
+        debugPrint('🔴 SIGNUP SCREEN ERROR: $e');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage,
