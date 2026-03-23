@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -47,41 +48,78 @@ class AuthService {
     required bool agreedToTerms,
     required String language,
   }) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    UserCredential? credential;
 
-    final uid = credential.user!.uid;
-    final fullName = '${firstName.trim()} ${lastName.trim()}';
+    try {
+      // ═══════════════════════════════════════════════
+      // الخطوة 1: إنشاء المستخدم في Firebase Auth
+      // ═══════════════════════════════════════════════
+      credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-    await credential.user!.updateDisplayName(fullName);
+      final uid = credential.user!.uid;
+      final fullName = '${firstName.trim()} ${lastName.trim()}';
 
-    final referralCode =
-        'INV-${const Uuid().v4().substring(0, 5).toUpperCase()}';
+      await credential.user!.updateDisplayName(fullName);
 
-    await _firestore.collection('members').doc(uid).set({
-      'uid': uid,
-      'fullName': fullName,
-      'email': email.trim(),
-      'phone': phone.trim(),
-      'nationalId': nationalId.trim(),
-      'city': city.trim(),
-      'jobTitle': '',
-      'investmentLevel': financialCapacity,
-      'interests': [],
-      'howDidYouKnow': '',
-      'role': 'member',
-      'status': 'active',
-      'invitedBy': inviteCode?.trim() ?? '',
-      'referralCode': referralCode,
-      'language': language,
-      'agreedToTerms': agreedToTerms,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+      final referralCode =
+          'INV-${const Uuid().v4().substring(0, 5).toUpperCase()}';
 
-    return credential;
+      debugPrint('✅ AUTH: User created with UID: $uid');
+      debugPrint('📝 FIRESTORE: Attempting to write member document...');
+
+      // ═══════════════════════════════════════════════
+      // الخطوة 2: حفظ البيانات في Firestore
+      // ═══════════════════════════════════════════════
+      await _firestore.collection('members').doc(uid).set({
+        'uid': uid,
+        'fullName': fullName,
+        'email': email.trim(),
+        'phone': phone.trim(),
+        'nationalId': nationalId.trim(),
+        'city': city.trim(),
+        'jobTitle': '',
+        'investmentLevel': financialCapacity,
+        'interests': <String>[],
+        'howDidYouKnow': '',
+        'role': 'member',
+        'status': 'active',
+        'invitedBy': inviteCode?.trim() ?? '',
+        'referralCode': referralCode,
+        'language': language,
+        'agreedToTerms': agreedToTerms,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('✅ FIRESTORE: Member document written successfully!');
+
+      return credential;
+
+    } catch (e) {
+      debugPrint('🔴 SIGNUP ERROR: $e');
+
+      // ═══════════════════════════════════════════════
+      // CLEANUP: لو الـ Firestore فشل بعد ما الـ Auth نجح
+      // نمسح الـ user من Auth عشان يقدر يسجل تاني بنفس الإيميل
+      // ═══════════════════════════════════════════════
+      if (credential != null && credential.user != null) {
+        debugPrint('🧹 CLEANUP: Deleting orphaned auth user...');
+        try {
+          await credential.user!.delete();
+          debugPrint('✅ CLEANUP: Orphaned user deleted successfully');
+        } catch (deleteError) {
+          debugPrint('⚠️ CLEANUP: Could not delete user: $deleteError');
+          // لو حتى المسح فشل، على الأقل نعمل sign out
+          try {
+            await _auth.signOut();
+          } catch (_) {}
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<void> signOut() async {
