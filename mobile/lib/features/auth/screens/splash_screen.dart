@@ -16,6 +16,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late AnimationController _logoController;
   late AnimationController _textController;
   late AnimationController _shimmerController;
+
   late Animation<double> _logoScale;
   late Animation<double> _logoFade;
   late Animation<double> _textFade;
@@ -26,7 +27,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   void initState() {
     super.initState();
 
-    // Logo animation
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -41,7 +41,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
 
-    // Text animation
     _textController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -56,7 +55,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       CurvedAnimation(parent: _textController, curve: Curves.easeOut),
     );
 
-    // Shimmer line animation
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -70,26 +68,31 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Future<void> _startAnimations() async {
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
     _logoController.forward();
 
     await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
     _textController.forward();
 
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
     _shimmerController.forward();
 
-    // Wait then navigate
     await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) {
-      _navigateToNextScreen();
-    }
+    if (!mounted) return;
+    _navigateToNextScreen();
   }
 
   void _navigateToNextScreen() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      context.go('/home');
-    } else {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        context.go('/home');
+      } else {
+        context.go('/login');
+      }
+    } catch (_) {
       context.go('/login');
     }
   }
@@ -123,48 +126,42 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Logo ──────────────────────────
-            AnimatedBuilder(
-              animation: _logoController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _logoFade,
-                  child: ScaleTransition(
-                    scale: _logoScale,
-                    child: child,
+            // ── Logo ──
+            FadeTransition(
+              opacity: _logoFade,
+              child: ScaleTransition(
+                scale: _logoScale,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryGold.withOpacity(0.25),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
                   ),
-                );
-              },
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryGold.withOpacity(0.25),
-                      blurRadius: 30,
-                      spreadRadius: 5,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primaryGold,
+                          ),
+                          child: const Icon(
+                            Icons.account_balance,
+                            size: 60,
+                            color: AppColors.primaryDark,
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primaryGold,
-                        ),
-                        child: const Icon(
-                          Icons.account_balance,
-                          size: 60,
-                          color: AppColors.primaryDark,
-                        ),
-                      );
-                    },
                   ),
                 ),
               ),
@@ -172,7 +169,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
             const SizedBox(height: 30),
 
-            // ── App Name Arabic ───────────────
+            // ── App Name Arabic ──
             SlideTransition(
               position: _textSlide,
               child: FadeTransition(
@@ -192,7 +189,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
             const SizedBox(height: 8),
 
-            // ── App Name English ──────────────
+            // ── App Name English ──
             SlideTransition(
               position: _textSlide,
               child: FadeTransition(
@@ -212,7 +209,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
             const SizedBox(height: 40),
 
-            // ── Gold shimmer line ─────────────
+            // ── Gold shimmer line ──
             FadeTransition(
               opacity: _shimmerFade,
               child: Container(
@@ -233,7 +230,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
             const SizedBox(height: 50),
 
-            // ── Loading indicator ─────────────
+            // ── Loading indicator ──
             FadeTransition(
               opacity: _shimmerFade,
               child: const SizedBox(
@@ -250,30 +247,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Flutter 3.4+ uses AnimatedBuilder.
-/// If you get an error, replace AnimatedBuilder with this:
-class AnimatedBuilder extends StatelessWidget {
-  final Animation<dynamic> animation;
-  final Widget Function(BuildContext, Widget?) builder;
-  final Widget? child;
-
-  const AnimatedBuilder({
-    super.key,
-    required this.animation,
-    required this.builder,
-    this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: builder,
-      child: child,
     );
   }
 }
