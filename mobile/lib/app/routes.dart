@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/signup_screen.dart';
@@ -79,16 +80,27 @@ class AppRoutes {
       ),
     ],
 
-    // Redirect logic
-    // TODO: ربط مع Firebase Auth للتحقق من حالة تسجيل الدخول
-    // redirect: (context, state) {
-    //   final isLoggedIn = FirebaseAuth.instance.currentUser != null;
-    //   final isOnAuth = state.matchedLocation == login ||
-    //       state.matchedLocation == signUp ||
-    //       state.matchedLocation == splash;
-    //   if (!isLoggedIn && !isOnAuth) return login;
-    //   if (isLoggedIn && isOnAuth) return home;
-    //   return null;
-    // },
+    // ── Redirect Logic ──────────────────────────────
+    redirect: (context, state) {
+      final isLoggedIn = FirebaseAuth.instance.currentUser != null;
+      final currentLocation = state.matchedLocation;
+
+      // قائمة الصفحات اللي مش محتاجة تسجيل دخول
+      final isOnAuthPage = currentLocation == splash ||
+          currentLocation == login ||
+          currentLocation == signUp;
+
+      // لو مش مسجل دخول وبيحاول يدخل صفحة محمية
+      if (!isLoggedIn && !isOnAuthPage) {
+        return login;
+      }
+
+      // لو مسجل دخول وبيحاول يدخل صفحة تسجيل/دخول (مش splash)
+      if (isLoggedIn && (currentLocation == login || currentLocation == signUp)) {
+        return home;
+      }
+
+      return null;
+    },
   );
 }
