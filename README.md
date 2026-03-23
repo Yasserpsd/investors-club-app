@@ -431,6 +431,36 @@ firebase/
 
 ---
 
+
+### مثبّت ✅
+
+| الأداة | الإصدار / الحالة |
+|--------|------------------|
+| Flutter SDK | 3.41.5 stable — المسار: `C:\src\flutter` |
+| Android SDK | 36.1.0 — مظبوط بالكامل ✅ |
+| Chrome | مثبت — للتطوير على الويب ✅ |
+| Visual Studio Build Tools | 2026 18.4.1 — لتطوير Windows ✅ |
+| Node.js | v24.14.0 ✅ |
+| Firebase CLI | 15.11.0 ✅ |
+| Git for Windows | مثبت ✅ |
+| Visual Studio Code | مثبت ✅ |
+| نظام التشغيل | Windows 11 — 25H2 |
+### متبقي ⚠️
+
+| المطلوب | التفاصيل |
+|---------|----------|
+| Flutter PATH | أوامر `flutter` تعمل فقط من `C:\src\flutter\bin` — يفضّل إضافتها للـ System PATH |
+| FlutterFire CLI | غير مثبت بعد — محتاج `dart pub global activate flutterfire_cli` |
+| firebase_options.dart | غير موجود — محتاج `flutterfire configure` |
+
+
+
+
+
+
+---
+
+
 ## مراحل التطوير المقترحة
 
 ### المرحلة الحالية (مطلوب الآن) 🔴
