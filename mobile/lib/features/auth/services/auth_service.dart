@@ -112,7 +112,6 @@ class AuthService {
           debugPrint('✅ CLEANUP: Orphaned user deleted successfully');
         } catch (deleteError) {
           debugPrint('⚠️ CLEANUP: Could not delete user: $deleteError');
-          // لو حتى المسح فشل، على الأقل نعمل sign out
           try {
             await _auth.signOut();
           } catch (_) {}
