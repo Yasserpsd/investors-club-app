@@ -152,7 +152,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (!_isEditing)
             IconButton(
               onPressed: () {
-                final member = profileAsync.valueOrNull;
+                final member = profileAsync.value;
                 if (member != null) {
                   _fullNameController.text = member.fullName;
                   _phoneController.text = member.phone;
