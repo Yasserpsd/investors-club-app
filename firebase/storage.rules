@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Offer images - admin can write, authenticated can read
+    match /offers/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Member avatars - owner can write, authenticated can read
+    match /members/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Chat attachments (future)
+    match /chats/{memberId}/{allPaths=**} {
+      allow read: if request.auth != null
+        && (request.auth.uid == memberId
+        || firestore.get(/databases/(default)/documents/members/$(request.auth.uid)).data.role == 'admin');
+      allow write: if request.auth != null
+        && (request.auth.uid == memberId
+        || firestore.get(/databases/(default)/documents/members/$(request.auth.uid)).data.role == 'admin')
+        && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
