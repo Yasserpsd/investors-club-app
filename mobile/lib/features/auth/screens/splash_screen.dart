@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../shared/constants/app_colors.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -84,16 +85,60 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _navigateToNextScreen();
   }
 
-  void _navigateToNextScreen() {
+  Future<void> _navigateToNextScreen() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        context.go('/home');
-      } else {
-        context.go('/login');
+
+      if (user == null) {
+        if (mounted) context.go('/login');
+        return;
       }
+
+      // تحقق من حالة العضو في Firestore
+      final memberDoc = await FirebaseFirestore.instance
+          .collection('members')
+          .doc(user.uid)
+          .get();
+
+      if (!mounted) return;
+
+      if (!memberDoc.exists) {
+        // المستخدم موجود في Auth بس مش في Firestore - يسجل خروج
+        await FirebaseAuth.instance.signOut();
+        if (mounted) context.go('/login');
+        return;
+      }
+
+      final status = memberDoc.data()?['status'] as String? ?? 'active';
+
+      if (status == 'suspended') {
+        // حساب موقوف
+        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'تم إيقاف حسابك. تواصل مع الإدارة',
+                style: TextStyle(fontFamily: 'IBMPlexSansArabic'),
+              ),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          context.go('/login');
+        }
+        return;
+      }
+
+      // حساب نشط - ادخل التطبيق
+      if (mounted) context.go('/home');
     } catch (_) {
-      context.go('/login');
+      if (mounted) context.go('/login');
     }
   }
 
@@ -138,7 +183,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryGold.withOpacity(0.25),
+                        color: AppColors.primaryGold.withValues(alpha: 0.25),
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
@@ -200,7 +245,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     fontFamily: 'IBMPlexSansArabic',
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: Colors.white.withOpacity(0.45),
+                    color: Colors.white.withValues(alpha: 0.45),
                     letterSpacing: 4,
                   ),
                 ),
@@ -219,9 +264,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   borderRadius: BorderRadius.circular(1),
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.primaryGold.withOpacity(0.1),
+                      AppColors.primaryGold.withValues(alpha: 0.1),
                       AppColors.primaryGold,
-                      AppColors.primaryGold.withOpacity(0.1),
+                      AppColors.primaryGold.withValues(alpha: 0.1),
                     ],
                   ),
                 ),
