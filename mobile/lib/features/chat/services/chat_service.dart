@@ -58,24 +58,33 @@ class ChatService {
     required String senderRole,
     required String text,
   }) async {
+    final trimmedText = text.trim();
+    if (trimmedText.isEmpty) return;
+
     final now = DateTime.now();
     final messageData = {
       'senderId': senderId,
       'senderRole': senderRole,
-      'text': text.trim(),
+      'text': trimmedText,
       'timestamp': Timestamp.fromDate(now),
       'isRead': false,
     };
 
-    await _messagesRef(memberId).add(messageData);
+    // استخدام batch write بدل كتابتين منفصلتين
+    final batch = _firestore.batch();
 
-    // Update the supportChats parent doc with last message info
-    await _firestore.collection('supportChats').doc(memberId).set({
-      'lastMessage': text.trim(),
+    final messageRef = _messagesRef(memberId).doc();
+    batch.set(messageRef, messageData);
+
+    final chatDocRef = _firestore.collection('supportChats').doc(memberId);
+    batch.set(chatDocRef, {
+      'lastMessage': trimmedText,
       'lastMessageTime': Timestamp.fromDate(now),
       'lastSenderRole': senderRole,
       'memberId': memberId,
     }, SetOptions(merge: true));
+
+    await batch.commit();
   }
 
   // ── Mark Messages as Read ───────────────────
@@ -83,13 +92,14 @@ class ChatService {
     required String memberId,
     required String readerRole,
   }) async {
-    // Mark all messages from the OTHER role as read
     final otherRole = readerRole == 'member' ? 'admin' : 'member';
 
     final unreadMessages = await _messagesRef(memberId)
         .where('senderRole', isEqualTo: otherRole)
         .where('isRead', isEqualTo: false)
         .get();
+
+    if (unreadMessages.docs.isEmpty) return;
 
     final batch = _firestore.batch();
     for (final doc in unreadMessages.docs) {
@@ -108,7 +118,7 @@ class ChatService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  // ── Get All Chats for Admin ─────────────────
+  // ── Get All Chats for Admin (مُحسّن) ────────
   Stream<List<Map<String, dynamic>>> getAllChatsForAdmin() {
     return _firestore
         .collection('supportChats')
@@ -117,20 +127,33 @@ class ChatService {
         .asyncMap((snapshot) async {
       final chats = <Map<String, dynamic>>[];
 
+      if (snapshot.docs.isEmpty) return chats;
+
+      // جمع كل الـ member IDs مرة واحدة
+      final memberIds = snapshot.docs.map((doc) => doc.id).toList();
+
+      // جلب بيانات كل الأعضاء في طلبات batch (كل 10 في مجموعة بسبب حد Firestore)
+      final Map<String, String> memberNames = {};
+      for (var i = 0; i < memberIds.length; i += 10) {
+        final batchIds = memberIds.sublist(
+          i,
+          i + 10 > memberIds.length ? memberIds.length : i + 10,
+        );
+        final membersSnapshot = await _firestore
+            .collection('members')
+            .where(FieldPath.documentId, whereIn: batchIds)
+            .get();
+        for (final memberDoc in membersSnapshot.docs) {
+          memberNames[memberDoc.id] =
+              (memberDoc.data()['fullName'] as String?) ?? 'عضو';
+        }
+      }
+
+      // جلب عدد الرسائل غير المقروءة لكل chat
       for (final doc in snapshot.docs) {
         final data = doc.data();
         final memberId = doc.id;
 
-        // Get member name
-        final memberDoc = await _firestore
-            .collection('members')
-            .doc(memberId)
-            .get();
-        final memberName = memberDoc.exists
-            ? (memberDoc.data()?['fullName'] ?? 'عضو')
-            : 'عضو محذوف';
-
-        // Get unread count
         final unreadSnapshot = await _messagesRef(memberId)
             .where('senderRole', isEqualTo: 'member')
             .where('isRead', isEqualTo: false)
@@ -138,7 +161,7 @@ class ChatService {
 
         chats.add({
           'memberId': memberId,
-          'name': memberName,
+          'name': memberNames[memberId] ?? 'عضو محذوف',
           'lastMessage': data['lastMessage'] ?? '',
           'lastMessageTime': data['lastMessageTime'],
           'unread': unreadSnapshot.docs.length,
