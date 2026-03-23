@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═══════════════════════════════════════════════
+    // Helper Functions
+    // ═══════════════════════════════════════════════
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isMember() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.role == 'member';
+    }
+
+    // nationalId must never change after creation
+    function nationalIdUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['nationalId']);
+    }
+
+    // ═══════════════════════════════════════════════
+    // Members Collection
+    // ═══════════════════════════════════════════════
+    match /members/{memberId} {
+      // Anyone authenticated can read their own doc
+      // Admin can read all
+      allow read: if isOwner(memberId) || isAdmin();
+
+      // New member can create their own doc on sign-up
+      allow create: if isOwner(memberId)
+        && request.resource.data.role == 'member'
+        && request.resource.data.nationalId is string
+        && request.resource.data.nationalId.size() == 10;
+
+      // Member can update own doc EXCEPT nationalId and role
+      allow update: if (isOwner(memberId) && nationalIdUnchanged()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+        || (isAdmin() && nationalIdUnchanged());
+
+      // Only admin can delete
+      allow delete: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════
+    // Offers Collection
+    // ═══════════════════════════════════════════════
+    match /offers/{offerId} {
+      // Published offers readable by all authenticated users
+      // Draft/hidden only by admin
+      allow read: if isAuthenticated() &&
+        (resource.data.status == 'published' || isAdmin());
+
+      // Only admin can create, update, delete
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════════
+    // Support Chats
+    // ═══════════════════════════════════════════════
+    match /supportChats/{memberId}/messages/{messageId} {
+      // Member can read/write their own chat
+      // Admin can read/write all chats
+      allow read: if isOwner(memberId) || isAdmin();
+
+      allow create: if (isOwner(memberId) &&
+        request.resource.data.senderRole == 'member' &&
+        request.resource.data.senderId == request.auth.uid)
+        || (isAdmin() &&
+        request.resource.data.senderRole == 'admin');
+
+      // Allow marking messages as read
+      allow update: if (isOwner(memberId) || isAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+    }
+  }
+}
