@@ -1,71 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../shared/constants/app_colors.dart';
-import '../../../shared/widgets/custom_text_field.dart';
-import '../../../shared/widgets/custom_button.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SplashScreen extends ConsumerStatefulWidget {
+  const SplashScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
-  late AnimationController _animController;
-  late Animation<double> _fadeAnimation;
+class _SplashScreenState extends ConsumerState<SplashScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _logoController;
+  late AnimationController _textController;
+  late AnimationController _shimmerController;
+  late Animation<double> _logoScale;
+  late Animation<double> _logoFade;
+  late Animation<double> _textFade;
+  late Animation<Offset> _textSlide;
+  late Animation<double> _shimmerFade;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+
+    // Logo animation
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
+    );
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _logoController,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
+    );
+
+    // Text animation
+    _textController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
     );
-    _animController.forward();
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeOut),
+    );
+
+    // Shimmer line animation
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _shimmerFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeIn),
+    );
+
+    _startAnimations();
+  }
+
+  Future<void> _startAnimations() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _logoController.forward();
+
+    await Future.delayed(const Duration(milliseconds: 800));
+    _textController.forward();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    _shimmerController.forward();
+
+    // Wait then navigate
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (mounted) {
+      _navigateToNextScreen();
+    }
+  }
+
+  void _navigateToNextScreen() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      context.go('/home');
+    } else {
+      context.go('/login');
+    }
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _animController.dispose();
+    _logoController.dispose();
+    _textController.dispose();
+    _shimmerController.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // TODO: Firebase Auth sign in
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        context.go('/home');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ في تسجيل الدخول: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 
   @override
@@ -83,240 +117,163 @@ class _LoginScreenState extends State<LoginScreen>
               AppColors.primaryDark,
               Color(0xFF1f1f3a),
             ],
+            stops: [0.0, 0.5, 1.0],
           ),
         ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                children: [
-                  const SizedBox(height: 50),
-
-                  // Logo
-                  Container(
-                    width: 110,
-                    height: 110,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryGold.withOpacity(0.2),
-                          blurRadius: 20,
-                          spreadRadius: 2,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // ── Logo ──────────────────────────
+            AnimatedBuilder(
+              animation: _logoController,
+              builder: (context, child) {
+                return FadeTransition(
+                  opacity: _logoFade,
+                  child: ScaleTransition(
+                    scale: _logoScale,
+                    child: child,
+                  ),
+                );
+              },
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGold.withOpacity(0.25),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryGold,
                         ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.primaryGold,
-                            ),
-                            child: const Icon(
-                              Icons.account_balance,
-                              size: 50,
-                              color: AppColors.primaryDark,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Title
-                  const Text(
-                    'نادي المستثمرين',
-                    style: TextStyle(
-                      fontFamily: 'IBMPlexSansArabic',
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primaryGold,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'INVESTORS CLUB',
-                    style: TextStyle(
-                      fontFamily: 'IBMPlexSansArabic',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.5),
-                      letterSpacing: 3,
-                    ),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // Login card
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.primaryGold.withOpacity(0.1),
-                      ),
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Section title
-                          Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryGold,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'تسجيل الدخول',
-                                style: TextStyle(
-                                  fontFamily: 'IBMPlexSansArabic',
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Email
-                          CustomTextField(
-                            controller: _emailController,
-                            label: 'البريد الإلكتروني',
-                            hint: 'example@email.com',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            textDirection: TextDirection.ltr,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'يرجى إدخال البريد الإلكتروني';
-                              }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                  .hasMatch(value)) {
-                                return 'بريد إلكتروني غير صحيح';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Password
-                          CustomTextField(
-                            controller: _passwordController,
-                            label: 'كلمة المرور',
-                            hint: '••••••••',
-                            prefixIcon: Icons.lock_outline,
-                            obscureText: _obscurePassword,
-                            textDirection: TextDirection.ltr,
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: AppColors.primaryGold.withOpacity(0.5),
-                                size: 20,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'يرجى إدخال كلمة المرور';
-                              }
-                              if (value.length < 6) {
-                                return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Forgot password
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton(
-                              onPressed: () {
-                                // TODO: Forgot password flow
-                              },
-                              child: Text(
-                                'نسيت كلمة المرور؟',
-                                style: TextStyle(
-                                  fontFamily: 'IBMPlexSansArabic',
-                                  fontSize: 13,
-                                  color:
-                                      AppColors.primaryGold.withOpacity(0.8),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Login button
-                          CustomButton(
-                            text: 'دخول',
-                            onPressed: _handleLogin,
-                            isLoading: _isLoading,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Sign up link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'ليس لديك حساب؟',
-                        style: TextStyle(
-                          fontFamily: 'IBMPlexSansArabic',
-                          fontSize: 14,
-                          color: Colors.white.withOpacity(0.5),
+                        child: const Icon(
+                          Icons.account_balance,
+                          size: 60,
+                          color: AppColors.primaryDark,
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.push('/signup'),
-                        child: const Text(
-                          'سجّل الآن',
-                          style: TextStyle(
-                            fontFamily: 'IBMPlexSansArabic',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primaryGold,
-                          ),
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-
-                  const SizedBox(height: 30),
-                ],
+                ),
               ),
             ),
-          ),
+
+            const SizedBox(height: 30),
+
+            // ── App Name Arabic ───────────────
+            SlideTransition(
+              position: _textSlide,
+              child: FadeTransition(
+                opacity: _textFade,
+                child: const Text(
+                  'نادي المستثمرين',
+                  style: TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryGold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── App Name English ──────────────
+            SlideTransition(
+              position: _textSlide,
+              child: FadeTransition(
+                opacity: _textFade,
+                child: Text(
+                  'INVESTORS CLUB',
+                  style: TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withOpacity(0.45),
+                    letterSpacing: 4,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 40),
+
+            // ── Gold shimmer line ─────────────
+            FadeTransition(
+              opacity: _shimmerFade,
+              child: Container(
+                width: 60,
+                height: 2,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(1),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryGold.withOpacity(0.1),
+                      AppColors.primaryGold,
+                      AppColors.primaryGold.withOpacity(0.1),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 50),
+
+            // ── Loading indicator ─────────────
+            FadeTransition(
+              opacity: _shimmerFade,
+              child: const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.primaryGold,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// Flutter 3.4+ uses AnimatedBuilder.
+/// If you get an error, replace AnimatedBuilder with this:
+class AnimatedBuilder extends StatelessWidget {
+  final Animation<dynamic> animation;
+  final Widget Function(BuildContext, Widget?) builder;
+  final Widget? child;
+
+  const AnimatedBuilder({
+    super.key,
+    required this.animation,
+    required this.builder,
+    this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: builder,
+      child: child,
     );
   }
 }
