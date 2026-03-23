@@ -2,81 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/constants/app_colors.dart';
-import '../../../shared/models/offer_model.dart';
+import '../../../shared/widgets/loading_widget.dart';
+import '../../../app/providers.dart';
+import '../../home/services/offers_service.dart';
+import '../../auth/services/auth_service.dart';
 import '../widgets/offer_card.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final langCode = ref.watch(languageProvider).languageCode;
+    final offersAsync = ref.watch(publishedOffersProvider);
+    final memberAsync = ref.watch(currentMemberProvider);
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _isLoading = false;
-
-  // TODO: Replace with Firestore stream
-  final List<OfferModel> _offers = [
-    OfferModel(
-      offerId: '1',
-      titleAr: 'فرصة استثمارية في قطاع التقنية',
-      titleEn: 'Investment Opportunity in Tech Sector',
-      bodyAr: 'تفاصيل الفرصة الاستثمارية الكاملة...',
-      bodyEn: 'Full investment opportunity details...',
-      summaryAr: 'شركة تقنية ناشئة تبحث عن مستثمرين',
-      summaryEn: 'A tech startup looking for investors',
-      category: 'تقنية',
-      images: [],
-      links: [],
-      isVIP: true,
-      status: 'published',
-      publishDate: DateTime(2026, 3, 22),
-      createdAt: DateTime(2026, 3, 22),
-      updatedAt: DateTime(2026, 3, 22),
-    ),
-    OfferModel(
-      offerId: '2',
-      titleAr: 'مشروع عقاري في الرياض',
-      titleEn: 'Real Estate Project in Riyadh',
-      bodyAr: 'تفاصيل المشروع العقاري...',
-      bodyEn: 'Real estate project details...',
-      summaryAr: 'مشروع سكني متكامل بعائد متوقع ممتاز',
-      summaryEn: 'Integrated residential project with excellent ROI',
-      category: 'عقارات',
-      images: [],
-      links: [],
-      isVIP: false,
-      status: 'published',
-      publishDate: DateTime(2026, 3, 20),
-      createdAt: DateTime(2026, 3, 20),
-      updatedAt: DateTime(2026, 3, 20),
-    ),
-    OfferModel(
-      offerId: '3',
-      titleAr: 'فرنشايز مطاعم - امتياز تجاري',
-      titleEn: 'Restaurant Franchise Opportunity',
-      bodyAr: 'تفاصيل فرصة الامتياز التجاري...',
-      bodyEn: 'Franchise opportunity details...',
-      summaryAr: 'علامة تجارية سعودية تبحث عن شركاء امتياز',
-      summaryEn: 'Saudi brand seeking franchise partners',
-      category: 'أغذية',
-      images: [],
-      links: [],
-      isVIP: false,
-      status: 'published',
-      publishDate: DateTime(2026, 3, 15),
-      createdAt: DateTime(2026, 3, 15),
-      updatedAt: DateTime(2026, 3, 15),
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
       body: CustomScrollView(
         slivers: [
-          // Custom App Bar
+          // ── App Bar ──────────────────────────
           SliverAppBar(
             expandedHeight: 200,
             floating: false,
@@ -95,139 +40,138 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            // Logo
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryGold
-                                        .withOpacity(0.2),
-                                    blurRadius: 10,
-                                  ),
-                                ],
-                              ),
-                              child: ClipOval(
-                                child: Image.asset(
-                                  'assets/images/logo.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: AppColors.primaryGold,
-                                    child: const Icon(
-                                      Icons.account_balance,
-                                      color: AppColors.primaryDark,
-                                    ),
-                                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 10),
+                      // Logo
+                      Container(
+                        width: 65,
+                        height: 65,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryGold.withOpacity(0.15),
+                              blurRadius: 15,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppColors.primaryGold,
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'أهلاً بك في',
-                                    style: TextStyle(
-                                      fontFamily: 'IBMPlexSansArabic',
-                                      fontSize: 13,
-                                      color: Colors.white54,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'نادي المستثمرين',
-                                    style: TextStyle(
-                                      fontFamily: 'IBMPlexSansArabic',
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primaryGold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Notification bell
-                            IconButton(
-                              onPressed: () {
-                                // TODO: Notifications
-                              },
-                              icon: Stack(
-                                children: [
-                                  Icon(
-                                    Icons.notifications_outlined,
-                                    color: Colors.white.withOpacity(0.7),
-                                    size: 26,
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.primaryGold,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                                child: const Icon(
+                                  Icons.account_balance,
+                                  size: 30,
+                                  color: AppColors.primaryDark,
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        const SizedBox(height: 20),
-                        // Stats row
-                        Row(
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Welcome
+                      memberAsync.when(
+                        data: (member) => Text(
+                          member != null
+                              ? 'أهلاً بك ${member.fullName}'
+                              : 'أهلاً بك في نادي المستثمرين',
+                          style: TextStyle(
+                            fontFamily: 'IBMPlexSansArabic',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Stats row
+                      offersAsync.when(
+                        data: (offers) => Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildStat('${_offers.length}', 'عروض متاحة'),
-                            const SizedBox(width: 12),
-                            _buildStat(
-                              '${_offers.where((o) => o.isVIP).length}',
-                              'عروض VIP',
+                            _StatChip(
+                              label: langCode == 'ar'
+                                  ? 'عروض متاحة'
+                                  : 'Available',
+                              value: '${offers.length}',
                             ),
                             const SizedBox(width: 12),
-                            _buildStat('3', 'أقسام'),
+                            _StatChip(
+                              label: langCode == 'ar'
+                                  ? 'عروض VIP'
+                                  : 'VIP',
+                              value:
+                                  '${offers.where((o) => o.isVIP).length}',
+                            ),
+                            const SizedBox(width: 12),
+                            _StatChip(
+                              label: langCode == 'ar'
+                                  ? 'أقسام'
+                                  : 'Categories',
+                              value:
+                                  '${offers.map((o) => o.category).toSet().length}',
+                            ),
                           ],
                         ),
-                      ],
-                    ),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
+            actions: [
+              IconButton(
+                onPressed: () {
+                  // TODO: Notifications
+                },
+                icon: Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ],
           ),
 
-          // Section title
+          // ── Section Title ────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
               child: Row(
                 children: [
                   Container(
                     width: 4,
-                    height: 18,
+                    height: 20,
                     decoration: BoxDecoration(
                       color: AppColors.primaryGold,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'أحدث الفرص الاستثمارية',
-                    style: TextStyle(
+                  const SizedBox(width: 10),
+                  Text(
+                    langCode == 'ar'
+                        ? 'أحدث الفرص الاستثمارية'
+                        : 'Latest Investment Opportunities',
+                    style: const TextStyle(
                       fontFamily: 'IBMPlexSansArabic',
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
                   ),
@@ -236,21 +180,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Offers list
-          _offers.isEmpty
-              ? SliverFillRemaining(
+          // ── Offers List ──────────────────────
+          offersAsync.when(
+            data: (offers) {
+              if (offers.isEmpty) {
+                return SliverFillRemaining(
                   child: Center(
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.inbox_outlined,
                           size: 60,
                           color: Colors.white.withOpacity(0.2),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         Text(
-                          'لا توجد عروض حالياً',
+                          langCode == 'ar'
+                              ? 'لا توجد عروض حالياً'
+                              : 'No offers available',
                           style: TextStyle(
                             fontFamily: 'IBMPlexSansArabic',
                             fontSize: 16,
@@ -260,68 +208,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                   ),
-                )
-              : SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final offer = _offers[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: OfferCard(
-                            offer: offer,
-                            onTap: () => context.push('/offer/${offer.offerId}'),
-                          ),
-                        );
-                      },
-                      childCount: _offers.length,
-                    ),
-                  ),
+                );
+              }
+
+              return SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final offer = offers[index];
+                    return OfferCard(
+                      offer: offer,
+                      langCode: langCode,
+                      onTap: () => context.push('/offer/${offer.offerId}'),
+                    );
+                  },
+                  childCount: offers.length,
                 ),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              child: LoadingWidget(message: 'جاري تحميل العروض...'),
+            ),
+            error: (error, _) => SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 50,
+                      color: AppColors.error.withOpacity(0.7),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'حدث خطأ في تحميل العروض',
+                      style: TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () =>
+                          ref.invalidate(publishedOffersProvider),
+                      child: const Text(
+                        'إعادة المحاولة',
+                        style: TextStyle(
+                          fontFamily: 'IBMPlexSansArabic',
+                          color: AppColors.primaryGold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
           // Bottom spacing
           const SliverToBoxAdapter(
-            child: SizedBox(height: 80),
+            child: SizedBox(height: 100),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStat(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.primaryGold.withOpacity(0.1),
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  const _StatChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.primaryGold.withOpacity(0.1),
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primaryGold,
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontFamily: 'IBMPlexSansArabic',
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primaryGold,
-              ),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'IBMPlexSansArabic',
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.5),
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'IBMPlexSansArabic',
-                fontSize: 11,
-                color: Colors.white.withOpacity(0.5),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
