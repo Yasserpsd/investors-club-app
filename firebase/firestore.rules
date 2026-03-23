@@ -38,13 +38,15 @@ service cloud.firestore {
       // Admin can read all
       allow read: if isOwner(memberId) || isAdmin();
 
-      // New member can create their own doc on sign-up
-      // فرض أن role = member و status = active عند الإنشاء
+      // ─── تسجيل عادي - بدون OTP ───
+      // المستخدم يقدر يعمل document لنفسه بشرط:
+      // 1. الـ memberId يكون نفس الـ UID بتاعه
+      // 2. الـ role يكون member
+      // 3. الـ status يكون active
+      // 4. وافق على الشروط
       allow create: if isOwner(memberId)
         && request.resource.data.role == 'member'
         && request.resource.data.status == 'active'
-        && request.resource.data.nationalId is string
-        && request.resource.data.nationalId.size() == 10
         && request.resource.data.agreedToTerms == true;
 
       // Member can update own doc EXCEPT nationalId, role, and status
