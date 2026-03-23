@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/constants/app_colors.dart';
 import '../../../shared/models/offer_model.dart';
-import '../../../app/providers.dart';
 import '../widgets/offer_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -14,20 +13,22 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _isLoading = false;
+
   // TODO: Replace with Firestore stream
-  final List<OfferModel> _mockOffers = [
+  final List<OfferModel> _offers = [
     OfferModel(
       offerId: '1',
-      titleAr: 'مبادرة 5 دقائق – الموسم الثاني',
-      titleEn: '5 Minutes Initiative – Season 2',
-      bodyAr: 'قريباً انطلاق الموسم الثاني من مبادرة "5 دقائق". هذه المرة التجربة مختلفة تماماً، وصوتك أنت سيصنع قائمة المشاريع المختارة. ستتاح الفرصة لجميع الأعضاء لاختيار 10 مشاريع من أصل 150 مشروعاً معتمداً في بنك المشاريع.',
-      bodyEn: 'Coming soon: Season 2 of the "5 Minutes" initiative. This time the experience is completely different, and your voice will shape the list of selected projects.',
-      summaryAr: 'قريباً انطلاق الموسم الثاني من مبادرة "5 دقائق" — صوتك يصنع قائمة المشاريع المختارة',
-      summaryEn: 'Season 2 of "5 Minutes" initiative is coming — your voice shapes the selected projects',
-      category: 'مبادرات',
+      titleAr: 'فرصة استثمارية في قطاع التقنية',
+      titleEn: 'Investment Opportunity in Tech Sector',
+      bodyAr: 'تفاصيل الفرصة الاستثمارية الكاملة...',
+      bodyEn: 'Full investment opportunity details...',
+      summaryAr: 'شركة تقنية ناشئة تبحث عن مستثمرين',
+      summaryEn: 'A tech startup looking for investors',
+      category: 'تقنية',
       images: [],
-      links: ['https://vcmem.com/5min'],
-      isVIP: false,
+      links: [],
+      isVIP: true,
       status: 'published',
       publishDate: DateTime(2026, 3, 22),
       createdAt: DateTime(2026, 3, 22),
@@ -35,15 +36,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ),
     OfferModel(
       offerId: '2',
-      titleAr: 'بنك المشاريع – اختر مشروعك المفضل',
-      titleEn: 'Projects Bank – Choose Your Favorite Project',
-      bodyAr: 'قاعدة بيانات أونلاين تحوي مئات المشاريع المنتقاة بضوابط ومقاييس محددة، تتيح لكل من يهمه أمر الشراكة من الأعضاء المسجلين أن يختار ما يناسبه.',
-      bodyEn: 'An online database containing hundreds of selected projects with specific criteria, allowing registered members to choose suitable partnerships.',
-      summaryAr: 'اختر من بين مئات المشاريع المنتقاة وتواصل مباشرة مع مؤسس المشروع',
-      summaryEn: 'Choose from hundreds of curated projects and connect directly with founders',
-      category: 'فرص استثمارية',
+      titleAr: 'مشروع عقاري في الرياض',
+      titleEn: 'Real Estate Project in Riyadh',
+      bodyAr: 'تفاصيل المشروع العقاري...',
+      bodyEn: 'Real estate project details...',
+      summaryAr: 'مشروع سكني متكامل بعائد متوقع ممتاز',
+      summaryEn: 'Integrated residential project with excellent ROI',
+      category: 'عقارات',
       images: [],
-      links: ['https://vibesholding.com/pb'],
+      links: [],
       isVIP: false,
       status: 'published',
       publishDate: DateTime(2026, 3, 20),
@@ -52,16 +53,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ),
     OfferModel(
       offerId: '3',
-      titleAr: 'فرصة استثمارية – شركة أبعاد الابتكار',
-      titleEn: 'Investment Opportunity – Innovation Dimensions',
-      bodyAr: 'يسرّ نادي المستثمرين استضافة د. ريم النفيسة مؤسسة شركة أبعاد الابتكار. الشركة متخصصة في قيادة الابتكار والتحول المؤسسي مع خطط توسع طموحة نحو الإمارات وقطر بحلول 2026.',
-      bodyEn: 'The Investors Club is pleased to host Dr. Reem Al-Nafisah, founder of Innovation Dimensions – specialists in innovation leadership and organizational transformation.',
-      summaryAr: 'فرصة شراكة مع شركة متخصصة في الابتكار والتحول المؤسسي — 10% من حصة الشركة مطروحة للشراكة',
-      summaryEn: 'Partnership opportunity with an innovation company – 10% equity offered for strategic partners',
-      category: 'فرص استثمارية',
+      titleAr: 'فرنشايز مطاعم - امتياز تجاري',
+      titleEn: 'Restaurant Franchise Opportunity',
+      bodyAr: 'تفاصيل فرصة الامتياز التجاري...',
+      bodyEn: 'Franchise opportunity details...',
+      summaryAr: 'علامة تجارية سعودية تبحث عن شركاء امتياز',
+      summaryEn: 'Saudi brand seeking franchise partners',
+      category: 'أغذية',
       images: [],
       links: [],
-      isVIP: true,
+      isVIP: false,
       status: 'published',
       publishDate: DateTime(2026, 3, 15),
       createdAt: DateTime(2026, 3, 15),
@@ -71,210 +72,256 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final locale = ref.watch(languageProvider);
-    final langCode = locale.languageCode;
-
     return Scaffold(
-      // ── App Bar ──────────────────────────────────
-      appBar: AppBar(
-        title: Text(
-          langCode == 'ar' ? 'نادي المستثمرين' : 'Investors Club',
-        ),
-        leading: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primaryGold, width: 1.5),
-            ),
-            child: const Icon(
-              Icons.account_balance,
-              size: 20,
-              color: AppColors.primaryGold,
-            ),
-            // TODO: Replace with logo
-          ),
-        ),
-        actions: [
-          // زر الإشعارات (مستقبلي)
-          IconButton(
-            onPressed: () {
-              // TODO: Notifications
-            },
-            icon: const Icon(Icons.notifications_outlined),
-          ),
-        ],
-      ),
-
-      body: RefreshIndicator(
-        color: AppColors.primaryGold,
-        onRefresh: () async {
-          // TODO: Refresh offers from Firestore
-          await Future.delayed(const Duration(seconds: 1));
-        },
-        child: CustomScrollView(
-          slivers: [
-            // ── Welcome Banner ────────────────────
-            SliverToBoxAdapter(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(16),
+      backgroundColor: AppColors.primaryDark,
+      body: CustomScrollView(
+        slivers: [
+          // Custom App Bar
+          SliverAppBar(
+            expandedHeight: 200,
+            floating: false,
+            pinned: true,
+            backgroundColor: AppColors.primaryDark,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF0d0d1a),
+                      AppColors.primaryDark,
+                    ],
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      langCode == 'ar' ? 'مرحباً بك 👋' : 'Welcome 👋',
-                      style: const TextStyle(
-                        fontFamily: 'IBMPlexSansArabic',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryGold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      langCode == 'ar'
-                          ? 'اكتشف أحدث الفرص الاستثمارية المتاحة لأعضاء النادي'
-                          : 'Discover the latest investment opportunities for club members',
-                      style: TextStyle(
-                        fontFamily: 'IBMPlexSansArabic',
-                        fontSize: 13,
-                        color: AppColors.textOnDark.withValues(alpha: 0.8),
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    // Quick stats
-                    Row(
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildStatChip(
-                          Icons.trending_up,
-                          langCode == 'ar' ? '${_mockOffers.length} عروض' : '${_mockOffers.length} Offers',
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            // Logo
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryGold
+                                        .withOpacity(0.2),
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: AppColors.primaryGold,
+                                    child: const Icon(
+                                      Icons.account_balance,
+                                      color: AppColors.primaryDark,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'أهلاً بك في',
+                                    style: TextStyle(
+                                      fontFamily: 'IBMPlexSansArabic',
+                                      fontSize: 13,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'نادي المستثمرين',
+                                    style: TextStyle(
+                                      fontFamily: 'IBMPlexSansArabic',
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primaryGold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Notification bell
+                            IconButton(
+                              onPressed: () {
+                                // TODO: Notifications
+                              },
+                              icon: Stack(
+                                children: [
+                                  Icon(
+                                    Icons.notifications_outlined,
+                                    color: Colors.white.withOpacity(0.7),
+                                    size: 26,
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primaryGold,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        _buildStatChip(
-                          Icons.star,
-                          langCode == 'ar'
-                              ? '${_mockOffers.where((o) => o.isVIP).length} VIP'
-                              : '${_mockOffers.where((o) => o.isVIP).length} VIP',
+                        const SizedBox(height: 20),
+                        // Stats row
+                        Row(
+                          children: [
+                            _buildStat('${_offers.length}', 'عروض متاحة'),
+                            const SizedBox(width: 12),
+                            _buildStat(
+                              '${_offers.where((o) => o.isVIP).length}',
+                              'عروض VIP',
+                            ),
+                            const SizedBox(width: 12),
+                            _buildStat('3', 'أقسام'),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
+          ),
 
-            // ── Section Header ────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGold,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      langCode == 'ar'
-                          ? 'أحدث العروض الاستثمارية'
-                          : 'Latest Investment Offers',
-                      style: const TextStyle(
-                        fontFamily: 'IBMPlexSansArabic',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Offers List ───────────────────────
-            _mockOffers.isEmpty
-                ? SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 60,
-                            color: AppColors.textHint.withValues(alpha: 0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            langCode == 'ar'
-                                ? 'لا توجد عروض حالياً'
-                                : 'No offers available',
-                            style: const TextStyle(
-                              fontFamily: 'IBMPlexSansArabic',
-                              fontSize: 16,
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final offer = _mockOffers[index];
-                        return OfferCard(
-                          offer: offer,
-                          langCode: langCode,
-                          onTap: () {
-                            context.push('/offer/${offer.offerId}');
-                          },
-                        );
-                      },
-                      childCount: _mockOffers.length,
+          // Section title
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGold,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-
-            // Bottom spacing
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'أحدث الفرص الاستثمارية',
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+
+          // Offers list
+          _offers.isEmpty
+              ? SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 60,
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'لا توجد عروض حالياً',
+                          style: TextStyle(
+                            fontFamily: 'IBMPlexSansArabic',
+                            fontSize: 16,
+                            color: Colors.white.withOpacity(0.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final offer = _offers[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: OfferCard(
+                            offer: offer,
+                            onTap: () => context.push('/offer/${offer.offerId}'),
+                          ),
+                        );
+                      },
+                      childCount: _offers.length,
+                    ),
+                  ),
+                ),
+
+          // Bottom spacing
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 80),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primaryGold.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.primaryGold),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'IBMPlexSansArabic',
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryGold,
-            ),
+  Widget _buildStat(String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primaryGold.withOpacity(0.1),
           ),
-        ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryGold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
