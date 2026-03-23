@@ -1,286 +1,404 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../shared/constants/app_colors.dart';
 import '../../../shared/widgets/loading_widget.dart';
 import '../../../app/providers.dart';
-import '../../home/services/offers_service.dart';
+import '../services/profile_service.dart';
+import '../../auth/services/auth_service.dart';
 
-class OfferDetailScreen extends ConsumerWidget {
-  final String offerId;
-  const OfferDetailScreen({super.key, required this.offerId});
+class ProfileScreen extends ConsumerStatefulWidget {
+  const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isEditing = false;
+  bool _isSaving = false;
+
+  final _fullNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _cityController = TextEditingController();
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _phoneController.dispose();
+    _cityController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      await ref.read(profileServiceProvider).updateProfile(
+            uid: uid,
+            fullName: _fullNameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            city: _cityController.text.trim(),
+          );
+
+      if (mounted) {
+        setState(() => _isEditing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('تم حفظ التغييرات بنجاح',
+                style: TextStyle(fontFamily: 'IBMPlexSansArabic')),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطأ: $e',
+                style: const TextStyle(fontFamily: 'IBMPlexSansArabic')),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تسجيل الخروج',
+            style: TextStyle(
+                fontFamily: 'IBMPlexSansArabic',
+                fontWeight: FontWeight.w700),
+            textAlign: TextAlign.center),
+        content: const Text('هل أنت متأكد من تسجيل الخروج؟',
+            style: TextStyle(fontFamily: 'IBMPlexSansArabic'),
+            textAlign: TextAlign.center),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء',
+                style: TextStyle(fontFamily: 'IBMPlexSansArabic')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('خروج',
+                style: TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
+                    color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(authServiceProvider).signOut();
+      if (mounted) context.go('/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final langCode = ref.watch(languageProvider).languageCode;
-    final offerAsync = ref.watch(offerByIdProvider(offerId));
+    final profileAsync = ref.watch(memberProfileProvider);
 
     return Scaffold(
       backgroundColor: AppColors.primaryDark,
-      body: offerAsync.when(
-        data: (offer) {
-          if (offer == null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline,
-                      size: 50, color: Colors.white.withOpacity(0.3)),
-                  const SizedBox(height: 16),
-                  Text(
-                    langCode == 'ar'
-                        ? 'لم يتم العثور على العرض'
-                        : 'Offer not found',
-                    style: TextStyle(
+      appBar: AppBar(
+        backgroundColor: AppColors.primaryDark,
+        elevation: 0,
+        title: Text(
+          langCode == 'ar' ? 'حسابي' : 'My Account',
+          style: const TextStyle(
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          if (!_isEditing)
+            IconButton(
+              onPressed: () {
+                final member = profileAsync.value;
+                if (member != null) {
+                  _fullNameController.text = member.fullName;
+                  _phoneController.text = member.phone;
+                  _cityController.text = member.city;
+                  setState(() => _isEditing = true);
+                }
+              },
+              icon: const Icon(Icons.edit_outlined,
+                  color: AppColors.primaryGold, size: 20),
+            )
+          else ...[
+            IconButton(
+              onPressed: () => setState(() => _isEditing = false),
+              icon: Icon(Icons.close,
+                  color: Colors.white.withOpacity(0.5), size: 20),
+            ),
+            IconButton(
+              onPressed: _isSaving ? null : _saveProfile,
+              icon: const Icon(Icons.check,
+                  color: AppColors.primaryGold, size: 22),
+            ),
+          ],
+        ],
+      ),
+      body: profileAsync.when(
+        data: (member) {
+          if (member == null) {
+            return const Center(
+              child: Text('لم يتم العثور على البيانات',
+                  style: TextStyle(
                       fontFamily: 'IBMPlexSansArabic',
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                  ),
-                ],
-              ),
+                      color: Colors.white54)),
             );
           }
 
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: offer.images.isNotEmpty ? 250 : 120,
-                pinned: true,
-                backgroundColor: AppColors.primaryDark,
-                leading: IconButton(
-                  onPressed: () => context.pop(),
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
-                      shape: BoxShape.circle,
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Avatar
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor:
+                      AppColors.primaryGold.withOpacity(0.15),
+                  child: Text(
+                    member.fullName.isNotEmpty
+                        ? member.fullName[0]
+                        : '?',
+                    style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryGold,
                     ),
-                    child: const Icon(Icons.arrow_back,
-                        color: Colors.white, size: 20),
                   ),
                 ),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: offer.images.isNotEmpty
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.network(
-                              offer.images.first,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => Container(
-                                color: AppColors.primaryDark,
-                                child: Icon(Icons.image_outlined,
-                                    size: 50,
-                                    color: Colors.white.withOpacity(0.15)),
-                              ),
-                            ),
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    AppColors.primaryDark.withOpacity(0.8),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Color(0xFF0d0d1a),
-                                AppColors.primaryDark
-                              ],
-                            ),
-                          ),
-                        ),
+                const SizedBox(height: 12),
+                Text(
+                  member.fullName,
+                  style: const TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: member.status == 'vip'
+                        ? AppColors.primaryGold.withOpacity(0.15)
+                        : Colors.green.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    member.status == 'vip' ? 'VIP' : 'عضو نشط',
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: member.status == 'vip'
+                          ? AppColors.primaryGold
+                          : Colors.greenAccent,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Info card
+                Container(
                   padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.primaryGold.withOpacity(0.1)),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
+                            width: 4,
+                            height: 18,
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.primaryGold.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              offer.category,
-                              style: const TextStyle(
-                                fontFamily: 'IBMPlexSansArabic',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryGold,
-                              ),
+                              color: AppColors.primaryGold,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                          if (offer.isVIP) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.star,
-                                      size: 12, color: Colors.amber),
-                                  SizedBox(width: 4),
-                                  Text('VIP',
-                                      style: TextStyle(
-                                          fontFamily: 'IBMPlexSansArabic',
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.amber)),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const Spacer(),
-                          Icon(Icons.calendar_today,
-                              size: 14,
-                              color: Colors.white.withOpacity(0.4)),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 10),
                           Text(
-                            offer.publishDate
-                                .toString()
-                                .substring(0, 10),
-                            style: TextStyle(
+                            langCode == 'ar'
+                                ? 'المعلومات الشخصية'
+                                : 'Personal Information',
+                            style: const TextStyle(
                               fontFamily: 'IBMPlexSansArabic',
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Text(
-                        offer.title(langCode),
-                        style: const TextStyle(
-                          fontFamily: 'IBMPlexSansArabic',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          height: 1.4,
-                        ),
+                      _buildField(
+                        icon: Icons.person_outline,
+                        label: langCode == 'ar' ? 'الاسم' : 'Name',
+                        value: member.fullName,
+                        controller:
+                            _isEditing ? _fullNameController : null,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        offer.body(langCode),
-                        style: TextStyle(
-                          fontFamily: 'IBMPlexSansArabic',
-                          fontSize: 15,
-                          color: Colors.white.withOpacity(0.75),
-                          height: 1.8,
-                        ),
+                      _buildField(
+                        icon: Icons.email_outlined,
+                        label: langCode == 'ar'
+                            ? 'البريد الإلكتروني'
+                            : 'Email',
+                        value: member.email,
                       ),
-                      if (offer.links.isNotEmpty) ...[
-                        const SizedBox(height: 30),
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryGold,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              langCode == 'ar'
-                                  ? 'روابط ذات صلة'
-                                  : 'Related Links',
-                              style: const TextStyle(
-                                fontFamily: 'IBMPlexSansArabic',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ...offer.links.map((link) {
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: InkWell(
-                              onTap: () async {
-                                final uri = Uri.parse(link);
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri,
-                                      mode:
-                                          LaunchMode.externalApplication);
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color:
-                                      Colors.white.withOpacity(0.05),
-                                  borderRadius:
-                                      BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: AppColors.primaryGold
-                                        .withOpacity(0.1),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                        Icons.open_in_new_outlined,
-                                        size: 16,
-                                        color: AppColors.primaryGold),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        link,
-                                        style: const TextStyle(
-                                          fontFamily:
-                                              'IBMPlexSansArabic',
-                                          fontSize: 13,
-                                          color: AppColors.primaryGold,
-                                          decoration:
-                                              TextDecoration.underline,
-                                        ),
-                                        overflow:
-                                            TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                      const SizedBox(height: 100),
+                      _buildField(
+                        icon: Icons.phone_outlined,
+                        label: langCode == 'ar'
+                            ? 'رقم الجوال'
+                            : 'Phone',
+                        value: member.phone,
+                        controller:
+                            _isEditing ? _phoneController : null,
+                      ),
+                      _buildField(
+                        icon: Icons.location_city_outlined,
+                        label:
+                            langCode == 'ar' ? 'المدينة' : 'City',
+                        value: member.city,
+                        controller:
+                            _isEditing ? _cityController : null,
+                      ),
+                      _buildField(
+                        icon: Icons.badge_outlined,
+                        label: langCode == 'ar'
+                            ? 'رقم الهوية'
+                            : 'National ID',
+                        value: member.nationalId,
+                        isLocked: true,
+                      ),
+                      _buildField(
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: langCode == 'ar'
+                            ? 'القدرة المالية'
+                            : 'Financial',
+                        value: member.investmentLevel == 'high'
+                            ? (langCode == 'ar' ? 'عالية' : 'High')
+                            : (langCode == 'ar'
+                                ? 'متوسطة'
+                                : 'Medium'),
+                      ),
+                      _buildField(
+                        icon: Icons.card_giftcard_outlined,
+                        label: langCode == 'ar'
+                            ? 'كود الإحالة'
+                            : 'Referral Code',
+                        value: member.referralCode,
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 20),
+
+                // Settings
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.primaryGold.withOpacity(0.1)),
+                  ),
+                  child: Column(
+                    children: [
+                      _settingsTile(
+                        icon: Icons.language,
+                        title:
+                            langCode == 'ar' ? 'اللغة' : 'Language',
+                        trailing: Text(
+                          langCode == 'ar' ? 'العربية' : 'English',
+                          style: const TextStyle(
+                            fontFamily: 'IBMPlexSansArabic',
+                            fontSize: 13,
+                            color: AppColors.primaryGold,
+                          ),
+                        ),
+                        onTap: () {
+                          ref
+                              .read(languageProvider.notifier)
+                              .toggleLanguage();
+                          final uid =
+                              FirebaseAuth.instance.currentUser?.uid;
+                          if (uid != null) {
+                            ref
+                                .read(profileServiceProvider)
+                                .updateLanguage(
+                                    uid,
+                                    ref
+                                        .read(languageProvider)
+                                        .languageCode);
+                          }
+                        },
+                      ),
+                      Divider(
+                          color: Colors.white.withOpacity(0.05),
+                          height: 1),
+                      _settingsTile(
+                        icon: Icons.card_giftcard,
+                        title: langCode == 'ar'
+                            ? 'دعوة صديق'
+                            : 'Invite Friend',
+                        onTap: () => context.push('/referral'),
+                      ),
+                      Divider(
+                          color: Colors.white.withOpacity(0.05),
+                          height: 1),
+                      _settingsTile(
+                        icon: Icons.logout,
+                        title: langCode == 'ar'
+                            ? 'تسجيل الخروج'
+                            : 'Logout',
+                        isDestructive: true,
+                        onTap: _handleLogout,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 80),
+              ],
+            ),
           );
         },
-        loading: () => const Center(
-            child: LoadingWidget(message: 'جاري تحميل العرض...')),
+        loading: () =>
+            const LoadingWidget(message: 'جاري تحميل البيانات...'),
         error: (error, _) => Center(
           child: Text(
             'حدث خطأ: $error',
@@ -289,77 +407,123 @@ class OfferDetailScreen extends ConsumerWidget {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
-        decoration: BoxDecoration(
-          color: AppColors.primaryDark,
-          border: Border(
-            top: BorderSide(
-                color: AppColors.primaryGold.withOpacity(0.1)),
+    );
+  }
+
+  Widget _buildField({
+    required IconData icon,
+    required String label,
+    required String value,
+    TextEditingController? controller,
+    bool isLocked = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primaryGold, size: 18),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 100,
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
+                  ),
+                ),
+                if (isLocked)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(Icons.lock,
+                        size: 10,
+                        color: Colors.white.withOpacity(0.3)),
+                  ),
+              ],
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  final offer =
-                      ref.read(offerByIdProvider(offerId)).value;
-                  if (offer != null) {
-                    SharePlus.instance.share(
-                      ShareParams(
-                        text:
-                            '${offer.title('ar')}\n\nhttps://vcmem.com/update/',
+          const SizedBox(width: 8),
+          Expanded(
+            child: controller != null
+                ? TextField(
+                    controller: controller,
+                    style: const TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 14,
+                      color: Colors.white,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                            color: AppColors.primaryGold
+                                .withOpacity(0.2)),
                       ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.share, size: 18),
-                label: Text(
-                  ref.watch(languageProvider).languageCode == 'ar'
-                      ? 'مشاركة'
-                      : 'Share',
-                  style: const TextStyle(
-                    fontFamily: 'IBMPlexSansArabic',
-                    fontWeight: FontWeight.w600,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                            color: AppColors.primaryGold
+                                .withOpacity(0.2)),
+                      ),
+                    ),
+                  )
+                : Text(
+                    value,
+                    style: TextStyle(
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: isLocked
+                          ? Colors.white.withOpacity(0.4)
+                          : Colors.white.withOpacity(0.85),
+                    ),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGold,
-                  foregroundColor: AppColors.primaryDark,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => context.push('/chat'),
-                icon: const Icon(Icons.chat_outlined, size: 18),
-                label: Text(
-                  ref.watch(languageProvider).languageCode == 'ar'
-                      ? 'تواصل'
-                      : 'Contact',
-                  style: const TextStyle(
-                    fontFamily: 'IBMPlexSansArabic',
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primaryGold,
-                  side:
-                      const BorderSide(color: AppColors.primaryGold),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsTile({
+    required IconData icon,
+    required String title,
+    Widget? trailing,
+    bool isDestructive = false,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(
+        icon,
+        color: isDestructive ? AppColors.error : AppColors.primaryGold,
+        size: 20,
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontFamily: 'IBMPlexSansArabic',
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: isDestructive
+              ? AppColors.error
+              : Colors.white.withOpacity(0.8),
         ),
       ),
+      trailing: trailing ??
+          Icon(Icons.chevron_left,
+              color: Colors.white.withOpacity(0.3), size: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      dense: true,
     );
   }
 }
